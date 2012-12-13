@@ -18,9 +18,10 @@ class parserOption:  # {{{
         self.p          = False
         self.blockquote = 0
         self.count      = 0
+        self.indentlevel = 0
 
     def __str__(self):
-        return "a={0} ul={1} ol={2} li={3} pre={4} code={5} p={6} blockquote={7} count={8} ".format(self.a,
+        return "a={0} ul={1} ol={2} li={3} pre={4} code={5} p={6} blockquote={7} count={8} indentlevel={9}".format(self.a,
                self.ul,
                self.ol,
                self.li,
@@ -28,7 +29,8 @@ class parserOption:  # {{{
                self.code,
                self.p,
                self.blockquote,
-               self.count)
+               self.count,
+               self.indentlevel)
 #}}}
 
 removeheadercode = re.compile('^<code>')
@@ -52,18 +54,28 @@ def parseENML(node, level=0, result='', option=parserOption()):  # {{{
             option.a = False
             result += '[{0}]({1})'.format(htmltext, htmlhref)
             result += "\n"
-        elif tag == "ul":
-            option.ul = True
+        elif tag in ["ul", "ol"]:
+            backupOptionCount = option.count
+            backupOptionUl = option.ul
+            backupOptionOl = option.ol
+            backupOptionIndentlevel = option.indentlevel
+
+            if tag == "ul":
+                option.ul = True
+                option.ol = False
+            elif tag == "ol":
+                option.ul = False
+                option.ol = True
+
             option.count = 0
+            option.indentlevel += 1
             result += "".join([parseENML(child, level + 1, "", option) for child in node.childNodes])
             result += "\n"
-            option.ul = False
-        elif tag == "ol":
-            option.ol = True
-            option.count = 0
-            result += "".join([parseENML(child, level + 1, "", option) for child in node.childNodes])
-            result += "\n"
-            option.ol = False
+
+            option.count = backupOptionCount
+            option.ul = backupOptionUl
+            option.ol = backupOptionOl
+            option.indentlevel = backupOptionIndentlevel
         elif tag == "pre":
             option.pre = True
             result += "".join([parseENML(child, level + 1, result, option) for child in node.childNodes])
@@ -82,10 +94,11 @@ def parseENML(node, level=0, result='', option=parserOption()):  # {{{
             result += "\n"
             option.p = False
         elif tag == "li":
+            result += "    " * (option.indentlevel - 1)
             option.count += 1
             if option.ul:
                 result += "* " + "".join([parseENML(child, level + 1, "", option) for child in node.childNodes])
-            if option.ol:
+            elif option.ol:
                 result += str(option.count) + ". " + "".join([parseENML(child, level + 1, "", option) for child in node.childNodes])
         elif tag == "blockquote":
             option.blockquote += 1
