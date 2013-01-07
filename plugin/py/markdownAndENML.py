@@ -82,7 +82,7 @@ def parseENML(node, level=0, result='', option=parserOption()):  # {{{
             option.pre = False
         elif tag == "code":
             option.code = True
-            precode = removeheadercode.sub('', xml.sax.saxutils.unescape(node.toxml()))
+            precode = removeheadercode.sub('', _unescapeString(node.toxml()))
             precode = removefootercode.sub('', precode)
             for line in precode.splitlines():
                 result += "    %s\n" % line.rstrip()
@@ -138,11 +138,14 @@ def _getTagName(node):  # {{{
     return None
 #}}}
 
+def _unescapeString(str):  # {{{
+    return xml.sax.saxutils.unescape(str, { '&quot;':'"' })
+#}}}
 
 def _getData(node):  # {{{
     """ return textdata """
     if node.nodeType == node.TEXT_NODE:
-        return node.data.strip()
+        return _unescapeString(node.data.strip())
     return ""
 #}}}
 
